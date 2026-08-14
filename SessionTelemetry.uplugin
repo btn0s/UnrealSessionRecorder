@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Session Telemetry",
+	"Description": "Structured session timelines with asynchronous player-view capture and post-session MP4 export.",
+	"Category": "Telemetry",
+	"CreatedBy": "ECHELON",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SessionTelemetry",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

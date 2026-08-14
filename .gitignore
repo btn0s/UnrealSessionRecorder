@@ -1,0 +1,9 @@
+/Binaries/
+/Intermediate/
+/.vs/
+/.idea/
+/.vscode/
+*.sln
+*.suo
+*.opensdf
+*.sdf
