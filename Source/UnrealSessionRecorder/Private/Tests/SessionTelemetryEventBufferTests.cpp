@@ -11,7 +11,7 @@
 #include "Serialization/JsonSerializer.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetryReservedFieldsTest,
-	"SessionTelemetry.EventBuffer.ReservedFields",
+	"UnrealSessionRecorder.EventBuffer.ReservedFields",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSessionTelemetryReservedFieldsTest::RunTest(const FString& Parameters)
@@ -50,7 +50,7 @@ bool FSessionTelemetryReservedFieldsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetryFrameFileNameTest,
-	"SessionTelemetry.EventBuffer.FrameFileNames",
+	"UnrealSessionRecorder.EventBuffer.FrameFileNames",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSessionTelemetryFrameFileNameTest::RunTest(const FString& Parameters)
@@ -65,7 +65,7 @@ bool FSessionTelemetryFrameFileNameTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetrySettingsDefaultsTest,
-	"SessionTelemetry.Settings.Defaults",
+	"UnrealSessionRecorder.Settings.Defaults",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSessionTelemetrySettingsDefaultsTest::RunTest(const FString& Parameters)
@@ -91,7 +91,7 @@ bool FSessionTelemetrySettingsDefaultsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetrySamplerValueEncodingTest,
-	"SessionTelemetry.PawnSampler.ValueEncoding",
+	"UnrealSessionRecorder.PawnSampler.ValueEncoding",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSessionTelemetrySamplerValueEncodingTest::RunTest(const FString& Parameters)

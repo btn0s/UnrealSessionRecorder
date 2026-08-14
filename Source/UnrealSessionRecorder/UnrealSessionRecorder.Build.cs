@@ -1,8 +1,8 @@
 using UnrealBuildTool;
 
-public class SessionTelemetry : ModuleRules
+public class UnrealSessionRecorder : ModuleRules
 {
-	public SessionTelemetry(ReadOnlyTargetRules Target) : base(Target)
+	public UnrealSessionRecorder(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 

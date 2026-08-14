@@ -398,7 +398,7 @@ void USessionTelemetrySubsystem::LaunchVideoExport() const
 	}
 
 #if PLATFORM_WINDOWS
-	const TSharedPtr<IPlugin> Plugin{IPluginManager::Get().FindPlugin(TEXT("SessionTelemetry"))};
+	const TSharedPtr<IPlugin> Plugin{IPluginManager::Get().FindPlugin(TEXT("UnrealSessionRecorder"))};
 	if (!Plugin.IsValid())
 	{
 		UE_LOG(LogSessionTelemetry, Warning, TEXT("SESSION TELEMETRY cannot locate its video export script."));

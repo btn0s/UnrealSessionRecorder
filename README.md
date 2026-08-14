@@ -34,8 +34,8 @@ The structured timeline and JPEG capture are runtime Unreal code. Only the autom
 
 ## Installation
 
-1. Copy or clone this repository to `<Project>/Plugins/SessionTelemetry`.
-2. Enable **Session Telemetry** in the project's plugin list.
+1. Copy or clone this repository to `<Project>/Plugins/UnrealSessionRecorder`.
+2. Enable **Unreal Session Recorder** in the project's plugin list.
 3. Regenerate project files if the host project uses generated IDE files.
 4. Build the host project's Editor target.
 
@@ -43,7 +43,7 @@ No content assets or Blueprint edits are required.
 
 ## Configuration
 
-Open **Project Settings → Session Telemetry**. Defaults are:
+Open **Project Settings → Unreal Session Recorder**. Defaults are:
 
 - Enabled: `true`
 - Pawn sampling: `3 Hz`
@@ -98,13 +98,13 @@ These boundaries keep the artifact useful to both humans watching the MP4 and ag
 `Tests/Verify-SessionTelemetry.ps1` validates a fresh session's JSON structure, local-player animation sample, monotonically increasing timestamps, JPEG existence and dimensions, non-black frame content, and optional H.264 MP4 output.
 
 ```powershell
-.\Plugins\SessionTelemetry\Tests\Verify-SessionTelemetry.ps1 `
+.\Plugins\UnrealSessionRecorder\Tests\Verify-SessionTelemetry.ps1 `
     -ProjectRoot $PWD `
     -NotBefore (Get-Date).AddMinutes(-5) `
     -RequireVideo
 ```
 
-The plugin also includes four Unreal automation tests under the `SessionTelemetry` test prefix.
+The plugin also includes four Unreal automation tests under the `UnrealSessionRecorder` test prefix.
 
 ## Current limitations
 

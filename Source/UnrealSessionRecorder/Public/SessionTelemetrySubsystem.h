@@ -14,7 +14,7 @@ class UTextureRenderTarget2D;
 DECLARE_LOG_CATEGORY_EXTERN(LogSessionTelemetry, Log, All);
 
 UCLASS()
-class SESSIONTELEMETRY_API USessionTelemetrySubsystem : public UWorldSubsystem
+class UNREALSESSIONRECORDER_API USessionTelemetrySubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 

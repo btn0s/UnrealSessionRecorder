@@ -4,8 +4,8 @@
 
 #include "SessionTelemetrySettings.generated.h"
 
-UCLASS(Config = Game, DefaultConfig, Meta = (DisplayName = "Session Telemetry"))
-class SESSIONTELEMETRY_API USessionTelemetrySettings : public UDeveloperSettings
+UCLASS(Config = Game, DefaultConfig, Meta = (DisplayName = "Unreal Session Recorder"))
+class UNREALSESSIONRECORDER_API USessionTelemetrySettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
