@@ -2,7 +2,7 @@
 
 A lightweight, Hotjar-like session recorder for Unreal Engine. It combines structured gameplay telemetry with asynchronous player-view screenshots and automatically produces an MP4 when a PIE session ends.
 
-It gives humans a replayable record and agents a queryable account of what happened during a play session, while gameplay remains the authoritative source of truth.
+It gives humans a replayable record and agents a queryable account of what happened during a play session.
 
 ## What it produces
 
@@ -81,17 +81,15 @@ The recorder owns the reserved `type`, `t`, and `f` fields. Caller-provided valu
 
 ### Blueprint
 
-Use **Record Telemetry Event (JSON)** with an event name and `JsonObjectWrapper`. The call validates the JSON before recording while gameplay execution remains independent.
+Use **Record Telemetry Event (JSON)** with an event name and `JsonObjectWrapper`. The call validates the JSON before recording.
 
-## Design boundaries
+## Instrumentation model
 
-- One-way observation: gameplay emits facts while gameplay systems retain every behavior decision.
 - Semantic events: record facts such as `weapon.equipped`, `weapon.fired`, or `guard.alerted`.
 - Sampled state: use periodic samplers for continuous values such as position, speed, or awareness.
 - Diagnostic logs: continue using `UE_LOG` for configuration problems, warnings, and implementation details.
-- Analysis scope: recorded evidence supports post-session review by humans and agents.
 
-These boundaries keep the artifact useful to both humans watching the MP4 and agents querying the JSON timeline.
+Together, the MP4 and timeline support visual playback and structured session analysis.
 
 ## Verification
 
