@@ -3,7 +3,7 @@ param(
 	[Parameter(Mandatory = $true)]
 	[string] $SessionDirectory,
 
-	[string] $FfmpegExecutable = 'ffmpeg',
+	[string] $FfmpegExecutable = '',
 
 	[string] $OutputFileName = 'session.mp4',
 
@@ -12,6 +12,8 @@ param(
 	[switch] $DisableInputOverlay,
 
 	[double] $InputTapDisplaySeconds = 0.4,
+
+	[double] $InputOverlayLeadSeconds = 0.1,
 
 	[int] $InputOverlayBottomMargin = 24,
 
@@ -43,6 +45,16 @@ function ConvertTo-AssText
 
 try
 {
+	if ([string]::IsNullOrWhiteSpace($FfmpegExecutable))
+	{
+		$FfmpegExecutable = [IO.Path]::GetFullPath(
+			(Join-Path $PSScriptRoot '..\ThirdParty\FFmpeg\Win64\ffmpeg.exe'))
+	}
+	if (-not (Test-Path -LiteralPath $FfmpegExecutable -PathType Leaf))
+	{
+		throw "Bundled FFmpeg is missing: $FfmpegExecutable"
+	}
+
 	$session = (Resolve-Path -LiteralPath $SessionDirectory).Path
 	$timelinePath = Join-Path $session 'timeline.json'
 	if (-not (Test-Path -LiteralPath $timelinePath))
@@ -132,6 +144,7 @@ try
 	if (-not $DisableInputOverlay)
 	{
 		$tapDurationMs = [int64] [Math]::Round([Math]::Max(0.05, $InputTapDisplaySeconds) * 1000.0)
+		$leadDurationMs = [int64] [Math]::Round([Math]::Max(0.0, $InputOverlayLeadSeconds) * 1000.0)
 		$inputEvents = @($events | Where-Object type -eq 'input' |
 			Sort-Object @{ Expression = { [int64] $_.t } }, @{ Expression = { [int64] $_.f } })
 		$openInputs = @{}
@@ -188,7 +201,8 @@ try
 		$boundaries = [Collections.Generic.List[object]]::new()
 		foreach ($interval in $intervals)
 		{
-			$boundaries.Add([pscustomobject]@{ Time = [int64] $interval.Start; Order = 1; Id = $interval.Id; Label = $interval.Label })
+			$adjustedStart = [Math]::Max(0, [int64] $interval.Start - $leadDurationMs)
+			$boundaries.Add([pscustomobject]@{ Time = $adjustedStart; Order = 1; Id = $interval.Id; Label = $interval.Label })
 			$boundaries.Add([pscustomobject]@{ Time = [int64] $interval.End; Order = 0; Id = $interval.Id; Label = $interval.Label })
 		}
 
@@ -269,7 +283,8 @@ try
 	$standardError = $process.StandardError.ReadToEnd()
 	$process.WaitForExit()
 	$exitCode = $process.ExitCode
-	@($standardOutput, $standardError) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+	@("ffmpeg=$($command.Path)", $standardOutput, $standardError) |
+		Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
 		Set-Content -LiteralPath (Join-Path $session 'video-export.log') -Encoding utf8
 	$process.Dispose()
 	if ($exitCode -ne 0)

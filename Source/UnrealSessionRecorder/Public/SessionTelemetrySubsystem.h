@@ -34,6 +34,12 @@ public:
 	static void Record(const UObject* WorldContextObject, const FString& Type,
 		const TSharedRef<FJsonObject>& Fields);
 
+	void FinalizeSession();
+
+	static void PruneOldSessionsForNewSession(int32 MaximumRetainedSessions);
+
+	static FString GetBundledFfmpegPath();
+
 	bool IsSessionActive() const
 	{
 		return bSessionActive;
@@ -57,6 +63,8 @@ private:
 	void PollFrameReadback();
 
 	void ReleasePendingReadback();
+
+	void UnbindInputCapture();
 
 	void HandleInputKey(const FInputKeyEventArgs& EventArgs);
 

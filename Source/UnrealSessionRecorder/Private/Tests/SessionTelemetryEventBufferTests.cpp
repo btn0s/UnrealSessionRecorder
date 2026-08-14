@@ -3,9 +3,11 @@
 #include "SessionTelemetryEventBuffer.h"
 #include "SessionTelemetryPawnSampler.h"
 #include "SessionTelemetrySettings.h"
+#include "SessionTelemetrySubsystem.h"
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
+#include "Misc/Paths.h"
 #include "Misc/AutomationTest.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -87,10 +89,23 @@ bool FSessionTelemetrySettingsDefaultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Input capture is enabled"), Settings->bCaptureInput);
 	TestTrue(TEXT("Input overlay is enabled"), Settings->bRenderInputOverlay);
 	TestEqual(TEXT("Input tap display duration"), Settings->InputTapDisplaySeconds, 0.4f);
+	TestEqual(TEXT("Input overlay lead time"), Settings->InputOverlayLeadSeconds, 0.1f);
 	TestEqual(TEXT("Input overlay bottom margin"), Settings->InputOverlayBottomMargin, 24);
+	TestEqual(TEXT("Maximum retained sessions"), Settings->MaximumRetainedSessions, 10);
 	TestTrue(TEXT("Video export is enabled"), Settings->bBuildVideoOnSessionEnd);
-	TestEqual(TEXT("FFmpeg executable"), Settings->FfmpegExecutable, FString(TEXT("ffmpeg")));
 	TestEqual(TEXT("Video filename"), Settings->VideoFileName, FString(TEXT("session.mp4")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetryBundledFfmpegTest,
+	"UnrealSessionRecorder.Video.BundledFfmpeg",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSessionTelemetryBundledFfmpegTest::RunTest(const FString& Parameters)
+{
+	const FString FfmpegPath{USessionTelemetrySubsystem::GetBundledFfmpegPath()};
+	TestTrue(TEXT("Bundled FFmpeg path is absolute"), FPaths::IsRelative(FfmpegPath) == false);
+	TestTrue(TEXT("Bundled FFmpeg exists"), FPaths::FileExists(FfmpegPath));
 	return true;
 }
 

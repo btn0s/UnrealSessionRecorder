@@ -1,9 +1,9 @@
 {
 	"FileVersion": 3,
-	"Version": 2,
-	"VersionName": "1.1",
+	"Version": 3,
+	"VersionName": "1.2",
 	"FriendlyName": "Unreal Session Recorder",
-	"Description": "Hotjar-like PIE session recording with structured telemetry, player-view capture, timed input overlays, and automatic MP4 export.",
+	"Description": "Self-contained PIE session recording with structured telemetry, 30 FPS player-view capture, input overlays, retention, and automatic MP4 export.",
 	"Category": "Telemetry",
 	"CreatedBy": "ECHELON",
 	"CanContainContent": false,
@@ -13,6 +13,11 @@
 		{
 			"Name": "UnrealSessionRecorder",
 			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "UnrealSessionRecorderEditor",
+			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}
 	]

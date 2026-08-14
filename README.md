@@ -1,6 +1,6 @@
 # Unreal Session Recorder
 
-A lightweight, Hotjar-like PIE session recorder for Unreal Engine. It combines structured gameplay telemetry, automatic input capture, asynchronous player-view screenshots, and an MP4 with timed input overlays.
+A self-contained, Hotjar-like PIE session recorder for Unreal Engine. It combines structured gameplay telemetry, automatic input capture, asynchronous player-view screenshots, and an MP4 with timed input overlays.
 
 It gives humans a replayable record and agents a queryable account of what happened during a play session.
 
@@ -29,16 +29,16 @@ The timeline contains ordered JSON events correlated by game time and Unreal's g
 
 - Unreal Engine 5.8. The plugin has been built and exercised against UE 5.8.1.
 - Windows for automatic post-session MP4 export.
-- FFmpeg and FFprobe available on `PATH`. FFmpeg 8.1.1 was used for acceptance.
 
-The structured timeline and JPEG capture are runtime Unreal code. Automatic PowerShell/FFmpeg export currently targets Windows.
+The plugin bundles FFmpeg 8.1.1 Essentials for Windows. Recording and export require no machine-level FFmpeg installation or `PATH` configuration.
 
 ## Installation
 
 1. Copy or clone this repository to `<Project>/Plugins/UnrealSessionRecorder`.
-2. Enable **Unreal Session Recorder** in the project's plugin list.
-3. Regenerate project files if the host project uses generated IDE files.
-4. Build the host project's Editor target.
+2. Run `git lfs pull` when installing from a Git clone.
+3. Enable **Unreal Session Recorder** in the project's plugin list.
+4. Regenerate project files if the host project uses generated IDE files.
+5. Build the host project's Editor target.
 
 Installation is code-only; existing content assets and Blueprints remain untouched.
 
@@ -55,9 +55,10 @@ Open **Project Settings → Unreal Session Recorder**. Defaults are:
 - Input capture: `true`
 - Input overlay: `true`
 - Input tap display: `0.4 seconds`
+- Input overlay lead time: `0.1 seconds`
 - Input overlay bottom margin: `24 px`
+- Maximum retained sessions: `10`
 - Build video when the session ends: `true`
-- FFmpeg executable: `ffmpeg`
 - Video filename: `session.mp4`
 
 Set either sampling frequency to zero to disable that stream.
@@ -66,7 +67,9 @@ Set either sampling frequency to zero to disable that stream.
 
 The recorder captures keyboard, mouse, touch, and gamepad press/release transitions from the PIE game viewport. Each transition enters the timeline as an `input` event with its key, display label, phase, device family, controller, game time, and frame.
 
-When PIE ends, the exporter converts those events into `overlays.ass`. Simultaneously held controls are grouped into a compact keycap display near the bottom center of `session.mp4`.
+UE 5.8's `FEditorDelegates::EndPIE` event finalizes the timeline and starts the bundled FFmpeg exporter. The exporter converts input events into `overlays.ass`, and simultaneously held controls appear as a compact keycap display near the bottom center of `session.mp4`. **Input Overlay Lead Time** moves each keycap's onset earlier to align it with the first visible gameplay response.
+
+Before each PIE session begins, the editor module removes the oldest timestamped session directories beyond **Maximum Retained Sessions**. The default keeps the newest ten recordings.
 
 ## Recording semantic events
 
@@ -115,7 +118,7 @@ Together, the MP4 and timeline support visual playback and structured session an
     -RequireVideo
 ```
 
-The plugin also includes four Unreal automation tests under the `UnrealSessionRecorder` test prefix.
+The plugin also includes five Unreal automation tests under the `UnrealSessionRecorder` test prefix.
 
 ## Current scope
 
@@ -124,6 +127,10 @@ The plugin also includes four Unreal automation tests under the `UnrealSessionRe
 - Current recordings combine video, structured telemetry, and timed input overlays.
 - Audio capture, multiple-player presentation, and event visualization can join as additional layers.
 
+## Bundled FFmpeg
+
+The Windows exporter is FFmpeg `8.1.1-essentials_build-www.gyan.dev`, distributed under GPLv3. Its license, build configuration, archive checksum, and corresponding source link live under `ThirdParty/FFmpeg/`.
+
 ## License
 
-All rights are reserved. Licensing will be selected explicitly.
+Unreal Session Recorder source code is all rights reserved. Bundled FFmpeg is distributed separately under GPLv3 with its license and corresponding source information under `ThirdParty/FFmpeg/`.

@@ -44,6 +44,23 @@ namespace
 {
 	TAtomic<bool> GEncodeFailureReported{false};
 
+	bool IsSessionDirectoryName(const FString& Name)
+	{
+		if (Name.Len() != 15 || Name[8] != TEXT('-'))
+		{
+			return false;
+		}
+
+		for (int32 Index{0}; Index < Name.Len(); ++Index)
+		{
+			if (Index != 8 && !FChar::IsDigit(Name[Index]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	void EncodeAndWriteJpeg(TArray<FColor>&& Pixels, const int32 Width, const int32 Height, const int32 Quality,
 		const FString& Path)
 	{
@@ -82,7 +99,15 @@ void USessionTelemetrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 
-	if (Settings == nullptr || !Settings->bEnabled || !EventBuffer.IsValid() || !EnsureRunDirectory())
+	if (Settings == nullptr || !Settings->bEnabled || !EventBuffer.IsValid())
+	{
+		return;
+	}
+	if (InWorld.WorldType != EWorldType::PIE)
+	{
+		PruneOldSessionsForNewSession(Settings->MaximumRetainedSessions);
+	}
+	if (!EnsureRunDirectory())
 	{
 		return;
 	}
@@ -131,12 +156,22 @@ void USessionTelemetrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 
 void USessionTelemetrySubsystem::Deinitialize()
 {
-	if (BoundViewportClient.IsValid() && InputKeyDelegateHandle.IsValid())
+	FinalizeSession();
+
+	EventBuffer.Reset();
+	Settings = nullptr;
+
+	Super::Deinitialize();
+}
+
+void USessionTelemetrySubsystem::FinalizeSession()
+{
+	if (!bSessionActive)
 	{
-		BoundViewportClient->OnInputKey().Remove(InputKeyDelegateHandle);
+		return;
 	}
-	InputKeyDelegateHandle.Reset();
-	BoundViewportClient.Reset();
+
+	UnbindInputCapture();
 
 	if (UWorld* World{GetWorld()})
 	{
@@ -147,21 +182,52 @@ void USessionTelemetrySubsystem::Deinitialize()
 
 	ReleasePendingReadback();
 
-	if (bSessionActive)
-	{
-		FlushToDisk();
-		UE_LOG(LogSessionTelemetry, Display, TEXT("SESSION TELEMETRY ended events=%d dir=%s"),
-			EventBuffer.IsValid() ? EventBuffer->Num() : 0, *RunDirectory);
-		LaunchVideoExport();
-	}
+	FlushToDisk();
+	UE_LOG(LogSessionTelemetry, Display, TEXT("SESSION TELEMETRY ended events=%d dir=%s"),
+		EventBuffer.IsValid() ? EventBuffer->Num() : 0, *RunDirectory);
+	LaunchVideoExport();
 
 	bSessionActive = false;
 	CaptureRig = nullptr;
 	CaptureTarget = nullptr;
-	EventBuffer.Reset();
-	Settings = nullptr;
+}
 
-	Super::Deinitialize();
+void USessionTelemetrySubsystem::PruneOldSessionsForNewSession(const int32 MaximumRetainedSessions)
+{
+	const int32 OldSessionsToKeep{FMath::Max(0, MaximumRetainedSessions - 1)};
+	const FString RootDirectory{FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(FPaths::ProjectDir(), TEXT(".session-telemetry")))};
+	if (!IFileManager::Get().DirectoryExists(*RootDirectory))
+	{
+		return;
+	}
+
+	TArray<FString> DirectoryNames;
+	IFileManager::Get().FindFiles(DirectoryNames, *FPaths::Combine(RootDirectory, TEXT("*")), false, true);
+	DirectoryNames.RemoveAll([](const FString& Name) { return !IsSessionDirectoryName(Name); });
+	DirectoryNames.Sort(TGreater<FString>());
+
+	for (int32 Index{OldSessionsToKeep}; Index < DirectoryNames.Num(); ++Index)
+	{
+		const FString DirectoryPath{FPaths::Combine(RootDirectory, DirectoryNames[Index])};
+		if (IFileManager::Get().DeleteDirectory(*DirectoryPath, false, true))
+		{
+			UE_LOG(LogSessionTelemetry, Display, TEXT("SESSION TELEMETRY pruned dir=%s"), *DirectoryPath);
+		}
+		else
+		{
+			UE_LOG(LogSessionTelemetry, Warning, TEXT("SESSION TELEMETRY failed to prune dir=%s"), *DirectoryPath);
+		}
+	}
+}
+
+FString USessionTelemetrySubsystem::GetBundledFfmpegPath()
+{
+	const TSharedPtr<IPlugin> Plugin{IPluginManager::Get().FindPlugin(TEXT("UnrealSessionRecorder"))};
+	return Plugin.IsValid()
+		? FPaths::ConvertRelativePathToFull(FPaths::Combine(Plugin->GetBaseDir(), TEXT("ThirdParty"),
+			TEXT("FFmpeg"), TEXT("Win64"), TEXT("ffmpeg.exe")))
+		: FString();
 }
 
 void USessionTelemetrySubsystem::Record(const UObject* WorldContextObject, const FString& Type,
@@ -407,6 +473,16 @@ void USessionTelemetrySubsystem::ReleasePendingReadback()
 	});
 }
 
+void USessionTelemetrySubsystem::UnbindInputCapture()
+{
+	if (BoundViewportClient.IsValid() && InputKeyDelegateHandle.IsValid())
+	{
+		BoundViewportClient->OnInputKey().Remove(InputKeyDelegateHandle);
+	}
+	InputKeyDelegateHandle.Reset();
+	BoundViewportClient.Reset();
+}
+
 void USessionTelemetrySubsystem::HandleInputKey(const FInputKeyEventArgs& EventArgs)
 {
 	if (!bSessionActive || (EventArgs.Event != IE_Pressed && EventArgs.Event != IE_Released))
@@ -450,11 +526,17 @@ void USessionTelemetrySubsystem::LaunchVideoExport() const
 
 	const FString VideoFileName{FPaths::GetCleanFilename(Settings->VideoFileName.IsEmpty()
 		? TEXT("session.mp4") : Settings->VideoFileName)};
-	const FString FfmpegExecutable{Settings->FfmpegExecutable.IsEmpty()
-		? TEXT("ffmpeg") : Settings->FfmpegExecutable};
+	const FString FfmpegExecutable{GetBundledFfmpegPath()};
+	if (!FPaths::FileExists(FfmpegExecutable))
+	{
+		UE_LOG(LogSessionTelemetry, Error, TEXT("SESSION TELEMETRY bundled FFmpeg is missing: %s"),
+			*FfmpegExecutable);
+		return;
+	}
 	const FString InputOverlayArguments{Settings->bRenderInputOverlay
-		? FString::Printf(TEXT(" -InputTapDisplaySeconds %.3f -InputOverlayBottomMargin %d -FrameWidth %d -FrameHeight %d"),
+		? FString::Printf(TEXT(" -InputTapDisplaySeconds %.3f -InputOverlayLeadSeconds %.3f -InputOverlayBottomMargin %d -FrameWidth %d -FrameHeight %d"),
 			FMath::Max(0.05f, Settings->InputTapDisplaySeconds),
+			FMath::Max(0.0f, Settings->InputOverlayLeadSeconds),
 			FMath::Max(0, Settings->InputOverlayBottomMargin),
 			FMath::Max(16, Settings->FrameCaptureWidth),
 			FMath::Max(16, Settings->FrameCaptureHeight))

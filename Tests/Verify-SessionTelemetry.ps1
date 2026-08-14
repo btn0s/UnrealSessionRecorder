@@ -177,18 +177,22 @@ if ($RequireVideo)
 		throw "Session video is empty: $videoPath"
 	}
 
-	$ffprobe = Get-Command ffprobe -CommandType Application -ErrorAction Stop
-	$probe = & $ffprobe.Path -v error -select_streams v:0 -show_entries 'stream=codec_name,width,height' -of json $videoPath |
-		ConvertFrom-Json
-	if ($LASTEXITCODE -ne 0 -or $probe.streams.Count -ne 1)
+	$ffmpegPath = [IO.Path]::GetFullPath(
+		(Join-Path $PSScriptRoot '..\ThirdParty\FFmpeg\Win64\ffmpeg.exe'))
+	if (-not (Test-Path -LiteralPath $ffmpegPath -PathType Leaf))
 	{
-		throw "FFprobe could not read one video stream: $videoPath"
+		throw "Bundled FFmpeg is missing: $ffmpegPath"
 	}
 
-	$stream = $probe.streams[0]
-	if ($stream.codec_name -ne 'h264' -or $stream.width -ne 480 -or $stream.height -ne 270)
+	$probeLines = @(& $ffmpegPath -hide_banner -i $videoPath -map '0:v:0' -frames:v 1 -f null NUL 2>&1)
+	if ($LASTEXITCODE -ne 0)
 	{
-		throw "Unexpected video stream $($stream.codec_name) $($stream.width)x$($stream.height): $videoPath"
+		throw "Bundled FFmpeg could not decode the video: $videoPath"
+	}
+	$probeText = $probeLines -join "`n"
+	if ($probeText -notmatch 'Video:\s+h264' -or $probeText -notmatch '480x270')
+	{
+		throw "Unexpected video stream; expected H.264 480x270: $videoPath"
 	}
 
 	if ($RequireInputOverlay)

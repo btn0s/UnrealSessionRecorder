@@ -42,14 +42,17 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Input", Meta = (ClampMin = 0.05, ForceUnits = "s"))
 	float InputTapDisplaySeconds{0.4f};
 
+	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Input", Meta = (ClampMin = 0, ForceUnits = "s"))
+	float InputOverlayLeadSeconds{0.1f};
+
 	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Input", Meta = (ClampMin = 0, ForceUnits = "px"))
 	int32 InputOverlayBottomMargin{24};
 
-	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Video")
-	bool bBuildVideoOnSessionEnd{true};
+	UPROPERTY(Config, EditAnywhere, Category = "Storage", Meta = (ClampMin = 1))
+	int32 MaximumRetainedSessions{10};
 
 	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Video")
-	FString FfmpegExecutable{TEXT("ffmpeg")};
+	bool bBuildVideoOnSessionEnd{true};
 
 	UPROPERTY(Config, EditAnywhere, Category = "Telemetry|Video")
 	FString VideoFileName{TEXT("session.mp4")};
