@@ -1,9 +1,9 @@
 {
 	"FileVersion": 3,
 	"Version": 3,
-	"VersionName": "1.2",
+	"VersionName": "1.2.0",
 	"FriendlyName": "Unreal Session Recorder",
-	"Description": "Self-contained PIE session recording with structured telemetry, 30 FPS player-view capture, input overlays, retention, and automatic MP4 export.",
+	"Description": "Zero-setup PIE session recording with structured telemetry, 30 FPS player-view capture, input overlays, retention, and automatic MP4 export.",
 	"Category": "Telemetry",
 	"CreatedBy": "ECHELON",
 	"CanContainContent": false,

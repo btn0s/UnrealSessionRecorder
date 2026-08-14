@@ -221,15 +221,6 @@ void USessionTelemetrySubsystem::PruneOldSessionsForNewSession(const int32 Maxim
 	}
 }
 
-FString USessionTelemetrySubsystem::GetBundledFfmpegPath()
-{
-	const TSharedPtr<IPlugin> Plugin{IPluginManager::Get().FindPlugin(TEXT("UnrealSessionRecorder"))};
-	return Plugin.IsValid()
-		? FPaths::ConvertRelativePathToFull(FPaths::Combine(Plugin->GetBaseDir(), TEXT("ThirdParty"),
-			TEXT("FFmpeg"), TEXT("Win64"), TEXT("ffmpeg.exe")))
-		: FString();
-}
-
 void USessionTelemetrySubsystem::Record(const UObject* WorldContextObject, const FString& Type,
 	const TSharedRef<FJsonObject>& Fields)
 {
@@ -526,13 +517,6 @@ void USessionTelemetrySubsystem::LaunchVideoExport() const
 
 	const FString VideoFileName{FPaths::GetCleanFilename(Settings->VideoFileName.IsEmpty()
 		? TEXT("session.mp4") : Settings->VideoFileName)};
-	const FString FfmpegExecutable{GetBundledFfmpegPath()};
-	if (!FPaths::FileExists(FfmpegExecutable))
-	{
-		UE_LOG(LogSessionTelemetry, Error, TEXT("SESSION TELEMETRY bundled FFmpeg is missing: %s"),
-			*FfmpegExecutable);
-		return;
-	}
 	const FString InputOverlayArguments{Settings->bRenderInputOverlay
 		? FString::Printf(TEXT(" -InputTapDisplaySeconds %.3f -InputOverlayLeadSeconds %.3f -InputOverlayBottomMargin %d -FrameWidth %d -FrameHeight %d"),
 			FMath::Max(0.05f, Settings->InputTapDisplaySeconds),
@@ -542,8 +526,8 @@ void USessionTelemetrySubsystem::LaunchVideoExport() const
 			FMath::Max(16, Settings->FrameCaptureHeight))
 		: FString(TEXT(" -DisableInputOverlay"))};
 	const FString Arguments{FString::Printf(
-		TEXT("-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%s\" -SessionDirectory \"%s\" -FfmpegExecutable \"%s\" -OutputFileName \"%s\"%s"),
-		*ScriptPath, *RunDirectory, *FfmpegExecutable, *VideoFileName, *InputOverlayArguments)};
+		TEXT("-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%s\" -SessionDirectory \"%s\" -OutputFileName \"%s\"%s"),
+		*ScriptPath, *RunDirectory, *VideoFileName, *InputOverlayArguments)};
 
 	const FString WindowsDirectory{FPlatformMisc::GetEnvironmentVariable(TEXT("SystemRoot"))};
 	const FString PowerShellPath{FPaths::Combine(WindowsDirectory, TEXT("System32"),

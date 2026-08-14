@@ -177,17 +177,20 @@ if ($RequireVideo)
 		throw "Session video is empty: $videoPath"
 	}
 
-	$ffmpegPath = [IO.Path]::GetFullPath(
-		(Join-Path $PSScriptRoot '..\ThirdParty\FFmpeg\Win64\ffmpeg.exe'))
+	$exportLogPath = Join-Path $session.FullName 'video-export.log'
+	$ffmpegLogLine = Get-Content -LiteralPath $exportLogPath |
+		Where-Object { $_ -like 'ffmpeg=*' } |
+		Select-Object -First 1
+	$ffmpegPath = if ($null -ne $ffmpegLogLine) { $ffmpegLogLine.Substring('ffmpeg='.Length) } else { '' }
 	if (-not (Test-Path -LiteralPath $ffmpegPath -PathType Leaf))
 	{
-		throw "Bundled FFmpeg is missing: $ffmpegPath"
+		throw "Host FFmpeg path is missing from the export log: $exportLogPath"
 	}
 
 	$probeLines = @(& $ffmpegPath -hide_banner -i $videoPath -map '0:v:0' -frames:v 1 -f null NUL 2>&1)
 	if ($LASTEXITCODE -ne 0)
 	{
-		throw "Bundled FFmpeg could not decode the video: $videoPath"
+		throw "Host FFmpeg could not decode the video: $videoPath"
 	}
 	$probeText = $probeLines -join "`n"
 	if ($probeText -notmatch 'Video:\s+h264' -or $probeText -notmatch '480x270')
@@ -197,7 +200,6 @@ if ($RequireVideo)
 
 	if ($RequireInputOverlay)
 	{
-		$exportLogPath = Join-Path $session.FullName 'video-export.log'
 		$exportLog = Get-Content -LiteralPath $exportLogPath -Raw
 		if ($exportLog -notmatch 'with [1-9][0-9]* input overlay segment')
 		{

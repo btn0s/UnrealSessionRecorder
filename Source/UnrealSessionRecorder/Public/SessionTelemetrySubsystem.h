@@ -38,8 +38,6 @@ public:
 
 	static void PruneOldSessionsForNewSession(int32 MaximumRetainedSessions);
 
-	static FString GetBundledFfmpegPath();
-
 	bool IsSessionActive() const
 	{
 		return bSessionActive;

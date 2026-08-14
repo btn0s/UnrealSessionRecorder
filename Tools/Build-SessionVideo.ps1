@@ -23,6 +23,48 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:FfmpegProvisioningLog = ''
+
+function Resolve-HostFfmpeg
+{
+	param([string] $ExplicitPath)
+
+	if (-not [string]::IsNullOrWhiteSpace($ExplicitPath))
+	{
+		return (Get-Command -Name $ExplicitPath -CommandType Application -ErrorAction Stop).Path
+	}
+
+	$command = Get-Command -Name 'ffmpeg.exe' -CommandType Application -ErrorAction SilentlyContinue
+	if ($null -ne $command)
+	{
+		return $command.Path
+	}
+
+	$winget = Get-Command -Name 'winget.exe' -CommandType Application -ErrorAction SilentlyContinue
+	if ($null -eq $winget)
+	{
+		throw 'FFmpeg is not installed and Windows Package Manager (winget) is unavailable.'
+	}
+
+	$wingetArguments = @(
+		'install', '--id', 'Gyan.FFmpeg.Essentials', '--version', '8.1.1', '--exact', '--source', 'winget',
+		'--silent', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity'
+	)
+	$wingetOutput = @(& $winget.Path @wingetArguments 2>&1)
+	$wingetExitCode = $LASTEXITCODE
+	$script:FfmpegProvisioningLog = $wingetOutput -join [Environment]::NewLine
+
+	$env:Path = @(
+		[Environment]::GetEnvironmentVariable('Path', 'Machine'),
+		[Environment]::GetEnvironmentVariable('Path', 'User')
+	) -join [IO.Path]::PathSeparator
+	$command = Get-Command -Name 'ffmpeg.exe' -CommandType Application -ErrorAction SilentlyContinue
+	if ($null -eq $command)
+	{
+		throw "WinGet did not make ffmpeg.exe available on the host PATH (exit code $wingetExitCode)."
+	}
+	return $command.Path
+}
 
 function Format-AssTime
 {
@@ -45,17 +87,12 @@ function ConvertTo-AssText
 
 try
 {
-	if ([string]::IsNullOrWhiteSpace($FfmpegExecutable))
-	{
-		$FfmpegExecutable = [IO.Path]::GetFullPath(
-			(Join-Path $PSScriptRoot '..\ThirdParty\FFmpeg\Win64\ffmpeg.exe'))
-	}
-	if (-not (Test-Path -LiteralPath $FfmpegExecutable -PathType Leaf))
-	{
-		throw "Bundled FFmpeg is missing: $FfmpegExecutable"
-	}
-
 	$session = (Resolve-Path -LiteralPath $SessionDirectory).Path
+	$ffmpegWasExplicit = -not [string]::IsNullOrWhiteSpace($FfmpegExecutable)
+	$ffmpegWasPresent = $null -ne (Get-Command -Name 'ffmpeg.exe' -CommandType Application -ErrorAction SilentlyContinue)
+	$FfmpegExecutable = Resolve-HostFfmpeg -ExplicitPath $FfmpegExecutable
+	$ffmpegSetupStatus = if ($ffmpegWasExplicit) { 'explicit' } elseif ($ffmpegWasPresent) { 'host-existing' } else { 'host-installed' }
+
 	$timelinePath = Join-Path $session 'timeline.json'
 	if (-not (Test-Path -LiteralPath $timelinePath))
 	{
@@ -283,7 +320,8 @@ try
 	$standardError = $process.StandardError.ReadToEnd()
 	$process.WaitForExit()
 	$exitCode = $process.ExitCode
-	@("ffmpeg=$($command.Path)", $standardOutput, $standardError) |
+	@("ffmpeg=$($command.Path)", "ffmpegSetup=$ffmpegSetupStatus", "ffmpegPackage=Gyan.FFmpeg.Essentials",
+		$script:FfmpegProvisioningLog, $standardOutput, $standardError) |
 		Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
 		Set-Content -LiteralPath (Join-Path $session 'video-export.log') -Encoding utf8
 	$process.Dispose()

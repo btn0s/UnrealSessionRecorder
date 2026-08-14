@@ -1,6 +1,6 @@
 # Unreal Session Recorder
 
-A self-contained, Hotjar-like PIE session recorder for Unreal Engine. It combines structured gameplay telemetry, automatic input capture, asynchronous player-view screenshots, and an MP4 with timed input overlays.
+A zero-setup, Hotjar-like PIE session recorder for Unreal Engine. It combines structured gameplay telemetry, automatic input capture, asynchronous player-view screenshots, and an MP4 with timed input overlays.
 
 It gives humans a replayable record and agents a queryable account of what happened during a play session.
 
@@ -30,15 +30,14 @@ The timeline contains ordered JSON events correlated by game time and Unreal's g
 - Unreal Engine 5.8. The plugin has been built and exercised against UE 5.8.1.
 - Windows for automatic post-session MP4 export.
 
-The plugin bundles FFmpeg 8.1.1 Essentials for Windows. Recording and export require no machine-level FFmpeg installation or `PATH` configuration.
+The plugin installs FFmpeg 8.1.1 Essentials on the host automatically through Windows Package Manager. Recording and export require no manual FFmpeg installation, Git LFS, or `PATH` configuration.
 
 ## Installation
 
 1. Copy or clone this repository to `<Project>/Plugins/UnrealSessionRecorder`.
-2. Run `git lfs pull` when installing from a Git clone.
-3. Enable **Unreal Session Recorder** in the project's plugin list.
-4. Regenerate project files if the host project uses generated IDE files.
-5. Build the host project's Editor target.
+2. Enable **Unreal Session Recorder** in the project's plugin list.
+3. Regenerate project files if the host project uses generated IDE files.
+4. Build the host project's Editor target.
 
 Installation is code-only; existing content assets and Blueprints remain untouched.
 
@@ -63,11 +62,15 @@ Open **Project Settings → Unreal Session Recorder**. Defaults are:
 
 Set either sampling frequency to zero to disable that stream.
 
+## Usage
+
+Start and stop PIE normally. When the first recorded PIE session ends, Unreal Session Recorder checks the host for `ffmpeg.exe`. If it is missing, the exporter silently installs `Gyan.FFmpeg.Essentials` through Windows Package Manager and then creates `session.mp4`. Every project and later export uses that host installation automatically.
+
 ## Input overlays
 
 The recorder captures keyboard, mouse, touch, and gamepad press/release transitions from the PIE game viewport. Each transition enters the timeline as an `input` event with its key, display label, phase, device family, controller, game time, and frame.
 
-UE 5.8's `FEditorDelegates::EndPIE` event finalizes the timeline and starts the bundled FFmpeg exporter. The exporter converts input events into `overlays.ass`, and simultaneously held controls appear as a compact keycap display near the bottom center of `session.mp4`. **Input Overlay Lead Time** moves each keycap's onset earlier to align it with the first visible gameplay response.
+UE 5.8's `FEditorDelegates::EndPIE` event finalizes the timeline and starts the FFmpeg exporter. The exporter converts input events into `overlays.ass`, and simultaneously held controls appear as a compact keycap display near the bottom center of `session.mp4`. **Input Overlay Lead Time** moves each keycap's onset earlier to align it with the first visible gameplay response.
 
 Before each PIE session begins, the editor module removes the oldest timestamped session directories beyond **Maximum Retained Sessions**. The default keeps the newest ten recordings.
 
@@ -127,10 +130,10 @@ The plugin also includes five Unreal automation tests under the `UnrealSessionRe
 - Current recordings combine video, structured telemetry, and timed input overlays.
 - Audio capture, multiple-player presentation, and event visualization can join as additional layers.
 
-## Bundled FFmpeg
+## Host FFmpeg
 
-The Windows exporter is FFmpeg `8.1.1-essentials_build-www.gyan.dev`, distributed under GPLv3. Its license, build configuration, archive checksum, and corresponding source link live under `ThirdParty/FFmpeg/`.
+The Windows exporter installs the WinGet package `Gyan.FFmpeg.Essentials`. The package currently resolves to FFmpeg 8.1.1 Essentials from Gyan, with installer SHA-256 `6f58ce889f59c311410f7d2b18895b33c03456463486f3b1ebc93d97a0f54541`. The corresponding FFmpeg source is commit [`239f2c733d`](https://github.com/FFmpeg/FFmpeg/tree/239f2c733d).
 
 ## License
 
-Unreal Session Recorder source code is all rights reserved. Bundled FFmpeg is distributed separately under GPLv3 with its license and corresponding source information under `ThirdParty/FFmpeg/`.
+Unreal Session Recorder source code is all rights reserved. FFmpeg installed through WinGet is provided by Gyan under GPLv3.

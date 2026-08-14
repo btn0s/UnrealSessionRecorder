@@ -7,6 +7,7 @@
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
+#include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
 #include "Misc/AutomationTest.h"
 #include "Serialization/JsonReader.h"
@@ -97,15 +98,20 @@ bool FSessionTelemetrySettingsDefaultsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetryBundledFfmpegTest,
-	"UnrealSessionRecorder.Video.BundledFfmpeg",
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSessionTelemetryVideoExportBootstrapTest,
+	"UnrealSessionRecorder.Video.ExportBootstrap",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FSessionTelemetryBundledFfmpegTest::RunTest(const FString& Parameters)
+bool FSessionTelemetryVideoExportBootstrapTest::RunTest(const FString& Parameters)
 {
-	const FString FfmpegPath{USessionTelemetrySubsystem::GetBundledFfmpegPath()};
-	TestTrue(TEXT("Bundled FFmpeg path is absolute"), FPaths::IsRelative(FfmpegPath) == false);
-	TestTrue(TEXT("Bundled FFmpeg exists"), FPaths::FileExists(FfmpegPath));
+	const TSharedPtr<IPlugin> Plugin{IPluginManager::Get().FindPlugin(TEXT("UnrealSessionRecorder"))};
+	TestTrue(TEXT("Plugin is registered"), Plugin.IsValid());
+	if (!Plugin.IsValid())
+	{
+		return false;
+	}
+	const FString ScriptPath{FPaths::Combine(Plugin->GetBaseDir(), TEXT("Tools"), TEXT("Build-SessionVideo.ps1"))};
+	TestTrue(TEXT("Host FFmpeg bootstrap script exists"), FPaths::FileExists(ScriptPath));
 	return true;
 }
 
