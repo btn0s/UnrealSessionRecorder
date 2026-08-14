@@ -2,7 +2,7 @@
 
 A lightweight, Hotjar-like session recorder for Unreal Engine. It combines structured gameplay telemetry with asynchronous player-view screenshots and automatically produces an MP4 when a PIE session ends.
 
-This is observational tooling, not deterministic replay. Gameplay never depends on the recorder, and the recorder does not reconstruct world state.
+It gives humans a replayable record and agents a queryable account of what happened during a play session, while gameplay remains the authoritative source of truth.
 
 ## What it produces
 
@@ -22,7 +22,7 @@ Each PIE or game session creates a timestamped directory under the host project'
       ...
 ```
 
-The timeline contains ordered JSON events correlated by game time and Unreal's global frame counter. The default sampler records generic pawn transform, movement, controller, character-movement, animation-instance, and montage state. The captured player view is encoded at its real observed timing, so dropped or delayed captures do not distort session duration.
+The timeline contains ordered JSON events correlated by game time and Unreal's global frame counter. The default sampler records generic pawn transform, movement, controller, character-movement, animation-instance, and montage state. The captured player view is encoded from observed timing, preserving session duration across variable capture cadence.
 
 ## Requirements
 
@@ -30,7 +30,7 @@ The timeline contains ordered JSON events correlated by game time and Unreal's g
 - Windows for automatic post-session MP4 export.
 - FFmpeg and FFprobe available on `PATH`. FFmpeg 8.1.1 was used for acceptance.
 
-The structured timeline and JPEG capture are runtime Unreal code. Only the automatic PowerShell/FFmpeg export path is currently Windows-specific.
+The structured timeline and JPEG capture are runtime Unreal code. Automatic PowerShell/FFmpeg export currently targets Windows.
 
 ## Installation
 
@@ -39,7 +39,7 @@ The structured timeline and JPEG capture are runtime Unreal code. Only the autom
 3. Regenerate project files if the host project uses generated IDE files.
 4. Build the host project's Editor target.
 
-No content assets or Blueprint edits are required.
+Installation is code-only; existing content assets and Blueprints remain untouched.
 
 ## Configuration
 
@@ -59,7 +59,7 @@ Set either sampling frequency to zero to disable that stream.
 
 ## Recording semantic events
 
-Systems should emit meaningful gameplay transitions, not tick-by-tick diagnostic text. Unreal's normal log remains the right place for programmer warnings and debugging breadcrumbs.
+Systems emit meaningful gameplay transitions into the session timeline. Unreal's normal log remains the right place for programmer warnings and debugging breadcrumbs.
 
 ### C++
 
@@ -81,15 +81,15 @@ The recorder owns the reserved `type`, `t`, and `f` fields. Caller-provided valu
 
 ### Blueprint
 
-Use **Record Telemetry Event (JSON)** with an event name and `JsonObjectWrapper`. Invalid JSON is rejected without affecting gameplay.
+Use **Record Telemetry Event (JSON)** with an event name and `JsonObjectWrapper`. The call validates the JSON before recording while gameplay execution remains independent.
 
 ## Design boundaries
 
-- One-way observation: gameplay may emit telemetry, but it must never read telemetry to decide behavior.
+- One-way observation: gameplay emits facts while gameplay systems retain every behavior decision.
 - Semantic events: record facts such as `weapon.equipped`, `weapon.fired`, or `guard.alerted`.
 - Sampled state: use periodic samplers for continuous values such as position, speed, or awareness.
 - Diagnostic logs: continue using `UE_LOG` for configuration problems, warnings, and implementation details.
-- No deterministic replay, input playback, state restoration, or event-sourced gameplay.
+- Analysis scope: recorded evidence supports post-session review by humans and agents.
 
 These boundaries keep the artifact useful to both humans watching the MP4 and agents querying the JSON timeline.
 
@@ -106,13 +106,13 @@ These boundaries keep the artifact useful to both humans watching the MP4 and ag
 
 The plugin also includes four Unreal automation tests under the `UnrealSessionRecorder` test prefix.
 
-## Current limitations
+## Current scope
 
-- Automatic video export supports Windows only.
+- Automatic video export targets Windows.
 - The recorder captures the first local player's view.
-- Audio is not captured.
+- Current recordings combine video and telemetry; audio capture can join as a future layer.
 - Multiple-player presentation, input overlays, and event visualization layers are future consumers of the existing timeline.
 
 ## License
 
-No license has been granted yet. All rights are reserved until a license is added explicitly.
+All rights are reserved. Licensing will be selected explicitly.
