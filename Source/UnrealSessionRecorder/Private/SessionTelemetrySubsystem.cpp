@@ -29,6 +29,8 @@
 #include "Modules/ModuleManager.h"
 #include "RenderingThread.h"
 #include "RHIGPUReadback.h"
+#include "Templates/Greater.h"
+#include "TextureResource.h"
 #include "TimerManager.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SessionTelemetrySubsystem)
