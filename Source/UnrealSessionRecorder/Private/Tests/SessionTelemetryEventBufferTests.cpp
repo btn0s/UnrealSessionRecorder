@@ -80,10 +80,14 @@ bool FSessionTelemetrySettingsDefaultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Telemetry is enabled"), Settings->bEnabled);
 	TestEqual(TEXT("Sample cadence"), Settings->SampleHz, 3.0f);
 	TestEqual(TEXT("Flush cadence"), Settings->FlushIntervalSeconds, 5.0f);
-	TestEqual(TEXT("Frame cadence"), Settings->FrameCaptureHz, 10.0f);
+	TestEqual(TEXT("Frame cadence"), Settings->FrameCaptureHz, 30.0f);
 	TestEqual(TEXT("Frame width"), Settings->FrameCaptureWidth, 480);
 	TestEqual(TEXT("Frame height"), Settings->FrameCaptureHeight, 270);
 	TestEqual(TEXT("JPEG quality"), Settings->JpegQuality, 80);
+	TestTrue(TEXT("Input capture is enabled"), Settings->bCaptureInput);
+	TestTrue(TEXT("Input overlay is enabled"), Settings->bRenderInputOverlay);
+	TestEqual(TEXT("Input tap display duration"), Settings->InputTapDisplaySeconds, 0.4f);
+	TestEqual(TEXT("Input overlay bottom margin"), Settings->InputOverlayBottomMargin, 24);
 	TestTrue(TEXT("Video export is enabled"), Settings->bBuildVideoOnSessionEnd);
 	TestEqual(TEXT("FFmpeg executable"), Settings->FfmpegExecutable, FString(TEXT("ffmpeg")));
 	TestEqual(TEXT("Video filename"), Settings->VideoFileName, FString(TEXT("session.mp4")));

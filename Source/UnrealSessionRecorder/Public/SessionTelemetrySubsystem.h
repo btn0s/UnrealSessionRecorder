@@ -7,7 +7,9 @@
 
 class FSessionTelemetryEventBuffer;
 struct FSessionTelemetryReadbackState;
+struct FInputKeyEventArgs;
 class ASceneCapture2D;
+class UGameViewportClient;
 class USessionTelemetrySettings;
 class UTextureRenderTarget2D;
 
@@ -56,6 +58,8 @@ private:
 
 	void ReleasePendingReadback();
 
+	void HandleInputKey(const FInputKeyEventArgs& EventArgs);
+
 	void LaunchVideoExport() const;
 
 	int64 NowMs() const;
@@ -80,6 +84,10 @@ private:
 	FTimerHandle FrameCaptureTimer;
 
 	FTimerHandle FlushTimer;
+
+	TWeakObjectPtr<UGameViewportClient> BoundViewportClient;
+
+	FDelegateHandle InputKeyDelegateHandle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ASceneCapture2D> CaptureRig;

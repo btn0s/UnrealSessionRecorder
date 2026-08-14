@@ -11,6 +11,7 @@ public class UnrealSessionRecorder : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
+			"InputCore",
 			"DeveloperSettings",
 			"Json",
 			"JsonUtilities",

@@ -6,7 +6,11 @@ param(
 	[Parameter(Mandatory = $true)]
 	[datetime] $NotBefore,
 
-	[switch] $RequireVideo
+	[switch] $RequireInputOverlay,
+
+	[switch] $RequireVideo,
+
+	[double] $MinimumFrameRate = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,12 +38,46 @@ $samples = @($events | Where-Object type -eq 'sample')
 $localSamples = @($samples | Where-Object role -eq 'localPlayer')
 $richLocalSamples = @($localSamples | Where-Object { $null -ne $_.PSObject.Properties['animInstance'] })
 $frames = @($events | Where-Object type -eq 'frame')
+$inputs = @($events | Where-Object type -eq 'input')
 
 if ($headers.Count -ne 1) { throw "Expected one header; found $($headers.Count)." }
 if ($samples.Count -eq 0) { throw 'No sample events found.' }
 if ($localSamples.Count -eq 0) { throw 'No local-player sample found.' }
 if ($richLocalSamples.Count -eq 0) { throw 'No local-player sample contains an animation instance.' }
 if ($frames.Count -eq 0) { throw 'No frame events found.' }
+
+$measuredFrameRate = 0.0
+if ($frames.Count -gt 1)
+{
+	$frameDurationSeconds = ([int64] $frames[-1].t - [int64] $frames[0].t) / 1000.0
+	if ($frameDurationSeconds -gt 0)
+	{
+		$measuredFrameRate = ($frames.Count - 1) / $frameDurationSeconds
+	}
+}
+if ($MinimumFrameRate -gt 0 -and $measuredFrameRate -lt $MinimumFrameRate)
+{
+	throw ('Measured frame rate {0:0.00} Hz is below required {1:0.00} Hz.' -f
+		$measuredFrameRate, $MinimumFrameRate)
+}
+
+$overlayPath = Join-Path $session.FullName 'overlays.ass'
+if ($RequireInputOverlay)
+{
+	if ($inputs.Count -eq 0) { throw 'No input events found.' }
+	$pressedInputs = @($inputs | Where-Object phase -eq 'pressed')
+	if ($pressedInputs.Count -eq 0) { throw 'No pressed input event found.' }
+	foreach ($field in 'key', 'label', 'device', 'controllerId')
+	{
+		if ($null -eq $pressedInputs[0].PSObject.Properties[$field])
+		{
+			throw "Pressed input event is missing '$field'."
+		}
+	}
+	if (-not (Test-Path -LiteralPath $overlayPath)) { throw "Input overlay is missing: $overlayPath" }
+	$dialogueLines = @(Get-Content -LiteralPath $overlayPath | Where-Object { $_ -like 'Dialogue:*' })
+	if ($dialogueLines.Count -eq 0) { throw "Input overlay contains no timed segments: $overlayPath" }
+}
 
 $requiredSampleFields = @('pos', 'rot', 'vel', 'speed', 'animInstance')
 foreach ($field in $requiredSampleFields)
@@ -152,6 +190,16 @@ if ($RequireVideo)
 	{
 		throw "Unexpected video stream $($stream.codec_name) $($stream.width)x$($stream.height): $videoPath"
 	}
+
+	if ($RequireInputOverlay)
+	{
+		$exportLogPath = Join-Path $session.FullName 'video-export.log'
+		$exportLog = Get-Content -LiteralPath $exportLogPath -Raw
+		if ($exportLog -notmatch 'with [1-9][0-9]* input overlay segment')
+		{
+			throw "Video export did not report composed input segments: $exportLogPath"
+		}
+	}
 }
 
 [pscustomobject]@{
@@ -159,7 +207,10 @@ if ($RequireVideo)
 	Events = $events.Count
 	Samples = $samples.Count
 	Frames = $frames.Count
+	MeasuredFrameRate = [Math]::Round($measuredFrameRate, 2)
+	Inputs = $inputs.Count
 	InspectedFrames = $inspected
+	Overlay = $(if (Test-Path -LiteralPath $overlayPath) { $overlayPath } else { $null })
 	Video = $(if (Test-Path -LiteralPath $videoPath) { $videoPath } else { $null })
 	Result = 'PASS'
 } | Format-List

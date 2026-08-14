@@ -1,6 +1,6 @@
 # Unreal Session Recorder
 
-A lightweight, Hotjar-like session recorder for Unreal Engine. It combines structured gameplay telemetry with asynchronous player-view screenshots and automatically produces an MP4 when a PIE session ends.
+A lightweight, Hotjar-like PIE session recorder for Unreal Engine. It combines structured gameplay telemetry, automatic input capture, asynchronous player-view screenshots, and an MP4 with timed input overlays.
 
 It gives humans a replayable record and agents a queryable account of what happened during a play session.
 
@@ -12,6 +12,7 @@ Each PIE or game session creates a timestamped directory under the host project'
 .session-telemetry/
   20260814-105336/
     timeline.json
+    overlays.ass
     session.mp4
     frames.ffconcat
     video-launch.log
@@ -48,14 +49,24 @@ Open **Project Settings → Unreal Session Recorder**. Defaults are:
 - Enabled: `true`
 - Pawn sampling: `3 Hz`
 - Timeline flush: every `5 seconds`
-- Player-view capture: `10 Hz`
+- Player-view capture: `30 Hz`
 - Frame dimensions: `480 × 270`
 - JPEG quality: `80`
+- Input capture: `true`
+- Input overlay: `true`
+- Input tap display: `0.4 seconds`
+- Input overlay bottom margin: `24 px`
 - Build video when the session ends: `true`
 - FFmpeg executable: `ffmpeg`
 - Video filename: `session.mp4`
 
 Set either sampling frequency to zero to disable that stream.
+
+## Input overlays
+
+The recorder captures keyboard, mouse, touch, and gamepad press/release transitions from the PIE game viewport. Each transition enters the timeline as an `input` event with its key, display label, phase, device family, controller, game time, and frame.
+
+When PIE ends, the exporter converts those events into `overlays.ass`. Simultaneously held controls are grouped into a compact keycap display near the bottom center of `session.mp4`.
 
 ## Recording semantic events
 
@@ -93,12 +104,14 @@ Together, the MP4 and timeline support visual playback and structured session an
 
 ## Verification
 
-`Tests/Verify-SessionTelemetry.ps1` validates a fresh session's JSON structure, local-player animation sample, monotonically increasing timestamps, JPEG existence and dimensions, non-black frame content, and optional H.264 MP4 output.
+`Tests/Verify-SessionTelemetry.ps1` validates a fresh session's JSON structure, local-player animation sample, monotonically increasing timestamps, JPEG existence and dimensions, non-black frame content, timed input overlays, and optional H.264 MP4 output.
 
 ```powershell
 .\Plugins\UnrealSessionRecorder\Tests\Verify-SessionTelemetry.ps1 `
     -ProjectRoot $PWD `
     -NotBefore (Get-Date).AddMinutes(-5) `
+    -RequireInputOverlay `
+    -MinimumFrameRate 27 `
     -RequireVideo
 ```
 
@@ -108,8 +121,8 @@ The plugin also includes four Unreal automation tests under the `UnrealSessionRe
 
 - Automatic video export targets Windows.
 - The recorder captures the first local player's view.
-- Current recordings combine video and telemetry; audio capture can join as a future layer.
-- Multiple-player presentation, input overlays, and event visualization layers are future consumers of the existing timeline.
+- Current recordings combine video, structured telemetry, and timed input overlays.
+- Audio capture, multiple-player presentation, and event visualization can join as additional layers.
 
 ## License
 

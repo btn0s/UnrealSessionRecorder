@@ -1,9 +1,9 @@
 {
 	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "1.0",
+	"Version": 2,
+	"VersionName": "1.1",
 	"FriendlyName": "Unreal Session Recorder",
-	"Description": "Structured session timelines with asynchronous player-view capture and post-session MP4 export.",
+	"Description": "Hotjar-like PIE session recording with structured telemetry, player-view capture, timed input overlays, and automatic MP4 export.",
 	"Category": "Telemetry",
 	"CreatedBy": "ECHELON",
 	"CanContainContent": false,

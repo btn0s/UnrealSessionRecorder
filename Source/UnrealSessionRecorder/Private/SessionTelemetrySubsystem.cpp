@@ -8,6 +8,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/SceneCapture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/World.h"
@@ -18,6 +19,7 @@
 #include "HAL/PlatformProcess.h"
 #include "IImageWrapperModule.h"
 #include "ImageCore.h"
+#include "InputKeyEventArgs.h"
 #include "Interfaces/IPluginManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/App.h"
@@ -86,6 +88,14 @@ void USessionTelemetrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	}
 
 	bSessionActive = true;
+	if (Settings->bCaptureInput)
+	{
+		if (UGameViewportClient* ViewportClient{InWorld.GetGameViewport()})
+		{
+			BoundViewportClient = ViewportClient;
+			InputKeyDelegateHandle = ViewportClient->OnInputKey().AddUObject(this, &ThisClass::HandleInputKey);
+		}
+	}
 
 	auto Header{MakeShared<FJsonObject>()};
 	Header->SetStringField(TEXT("project"), FApp::GetProjectName());
@@ -121,6 +131,13 @@ void USessionTelemetrySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 
 void USessionTelemetrySubsystem::Deinitialize()
 {
+	if (BoundViewportClient.IsValid() && InputKeyDelegateHandle.IsValid())
+	{
+		BoundViewportClient->OnInputKey().Remove(InputKeyDelegateHandle);
+	}
+	InputKeyDelegateHandle.Reset();
+	BoundViewportClient.Reset();
+
 	if (UWorld* World{GetWorld()})
 	{
 		World->GetTimerManager().ClearTimer(SampleTimer);
@@ -390,6 +407,24 @@ void USessionTelemetrySubsystem::ReleasePendingReadback()
 	});
 }
 
+void USessionTelemetrySubsystem::HandleInputKey(const FInputKeyEventArgs& EventArgs)
+{
+	if (!bSessionActive || (EventArgs.Event != IE_Pressed && EventArgs.Event != IE_Released))
+	{
+		return;
+	}
+
+	auto Fields{MakeShared<FJsonObject>()};
+	Fields->SetStringField(TEXT("key"), EventArgs.Key.GetFName().ToString());
+	Fields->SetStringField(TEXT("label"), EventArgs.Key.GetDisplayName(false).ToString());
+	Fields->SetStringField(TEXT("phase"), EventArgs.Event == IE_Pressed ? TEXT("pressed") : TEXT("released"));
+	Fields->SetStringField(TEXT("device"), EventArgs.bIsTouchEvent ? TEXT("touch") :
+		EventArgs.Key.IsGamepadKey() ? TEXT("gamepad") :
+		EventArgs.Key.IsMouseButton() ? TEXT("mouse") : TEXT("keyboard"));
+	Fields->SetNumberField(TEXT("controllerId"), EventArgs.ControllerId);
+	RecordInternal(TEXT("input"), Fields);
+}
+
 void USessionTelemetrySubsystem::LaunchVideoExport() const
 {
 	if (Settings == nullptr || !Settings->bBuildVideoOnSessionEnd || RunDirectory.IsEmpty())
@@ -417,9 +452,16 @@ void USessionTelemetrySubsystem::LaunchVideoExport() const
 		? TEXT("session.mp4") : Settings->VideoFileName)};
 	const FString FfmpegExecutable{Settings->FfmpegExecutable.IsEmpty()
 		? TEXT("ffmpeg") : Settings->FfmpegExecutable};
+	const FString InputOverlayArguments{Settings->bRenderInputOverlay
+		? FString::Printf(TEXT(" -InputTapDisplaySeconds %.3f -InputOverlayBottomMargin %d -FrameWidth %d -FrameHeight %d"),
+			FMath::Max(0.05f, Settings->InputTapDisplaySeconds),
+			FMath::Max(0, Settings->InputOverlayBottomMargin),
+			FMath::Max(16, Settings->FrameCaptureWidth),
+			FMath::Max(16, Settings->FrameCaptureHeight))
+		: FString(TEXT(" -DisableInputOverlay"))};
 	const FString Arguments{FString::Printf(
-		TEXT("-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%s\" -SessionDirectory \"%s\" -FfmpegExecutable \"%s\" -OutputFileName \"%s\""),
-		*ScriptPath, *RunDirectory, *FfmpegExecutable, *VideoFileName)};
+		TEXT("-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"%s\" -SessionDirectory \"%s\" -FfmpegExecutable \"%s\" -OutputFileName \"%s\"%s"),
+		*ScriptPath, *RunDirectory, *FfmpegExecutable, *VideoFileName, *InputOverlayArguments)};
 
 	const FString WindowsDirectory{FPlatformMisc::GetEnvironmentVariable(TEXT("SystemRoot"))};
 	const FString PowerShellPath{FPaths::Combine(WindowsDirectory, TEXT("System32"),
